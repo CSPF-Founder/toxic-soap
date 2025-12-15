@@ -34,14 +34,14 @@ docker-build:
 
 # Docker run with compose
 docker-run:
-	docker-compose up --build -d
+	docker compose up --build -d
 	@echo "Toxic SOAP is starting..."
 	@echo "Admin Panel: http://localhost:4040/admin"
 	@echo "WSDL: http://localhost:4040/ws/banking?wsdl"
 
 # Stop Docker
 docker-stop:
-	docker-compose down
+	docker compose down
 
 # Full rebuild and run
 all: clean docker-run

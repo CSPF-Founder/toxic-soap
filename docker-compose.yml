@@ -1,0 +1,53 @@
+services:
+  mariadb:
+    image: mariadb:11
+    container_name: toxic-mariadb
+    environment:
+      MARIADB_ROOT_PASSWORD: rootpass
+      MARIADB_DATABASE: toxicdb
+      MARIADB_USER: toxic
+      MARIADB_PASSWORD: toxic123
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - toxic-network
+
+  toxic-soap:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: toxic-soap
+    ports:
+      - "4040:4040"
+    environment:
+      - JAVA_OPTS=-Xmx512m -Xms256m
+      - SPRING_PROFILES_ACTIVE=default
+      - DB_HOST=mariadb
+      - DB_USER=toxic
+      - DB_PASSWORD=toxic123
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4040/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - toxic-network
+
+networks:
+  toxic-network:
+    driver: bridge
+
+volumes:
+  mariadb_data:

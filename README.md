@@ -13,11 +13,11 @@ A deliberately vulnerable SOAP web service designed for security scanner testing
 - **15 intentional vulnerabilities** in a single unified SOAP service
 - **Single WSDL endpoint** matching corporate patterns
 - **Automatic WSDL generation** for easy scanner import
-- **Dual authentication support** (WS-Security & HTTP Basic Auth)
+- **4 authentication methods** (WS-Security, HTTP Basic, Bearer Token/JWT, API Key)
 - **Per-operation authorization** (PUBLIC / USER / ADMIN)
-- **Interactive admin panel** with documentation and payloads
+- **Interactive admin panel** with documentation, payloads, and JWT generator
 - **Docker deployment** for easy setup
-- **H2 in-memory database** with reset capability
+- **MariaDB database** with reset capability
 
 ## Quick Start
 
@@ -25,7 +25,7 @@ A deliberately vulnerable SOAP web service designed for security scanner testing
 
 ```bash
 # Clone and start
-git clone https://github.com/CySecurity/toxic-soap.git
+git clone https://github.com/CSPF-Founder/toxic-soap.git
 cd toxic-soap
 docker compose up -d
 
@@ -46,7 +46,6 @@ java -jar target/toxic-soap-1.0.0.jar
 |-----|-------------|
 | http://localhost:4040/admin | Admin Panel & Documentation |
 | http://localhost:4040/ws/banking?wsdl | BankingPortalService WSDL (Single endpoint) |
-| http://localhost:4040/h2-console | H2 Database Console |
 | http://localhost:4040/health | Health Check Endpoint |
 
 ## Architecture (Corporate Pattern)
@@ -74,13 +73,15 @@ This service follows real corporate SOAP patterns with a **single WSDL** contain
 
 ## Authentication
 
+Four authentication methods are supported. The interceptor tries them in order: WS-Security → Bearer Token → API Key → Basic Auth.
+
 ### Test Credentials
 
-| Username | Password | Role | Access |
-|----------|----------|------|--------|
-| `user` | `user123` | USER | User operations |
-| `admin` | `admin123` | ADMIN | All operations |
-| `guest` | `guest` | GUEST | Limited |
+| Username | Password | Role | API Key |
+|----------|----------|------|---------|
+| `user` | `user123` | USER | `user-api-key-12345` |
+| `admin` | `admin123` | ADMIN | `admin-api-key-67890` |
+| `guest` | `guest` | GUEST | `guest-api-key-abcde` |
 
 ### Method 1: HTTP Basic Authentication
 
@@ -93,7 +94,27 @@ Or with header:
 Authorization: Basic dXNlcjp1c2VyMTIz
 ```
 
-### Method 2: WS-Security UsernameToken
+### Method 2: Bearer Token (JWT)
+
+Generate a token from the admin panel or via API:
+```bash
+curl -X POST "http://localhost:4040/admin/generate-token?username=admin"
+```
+
+Use the token:
+```
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
+```
+
+JWT tokens expire after 24 hours.
+
+### Method 3: API Key
+
+```
+X-API-Key: admin-api-key-67890
+```
+
+### Method 4: WS-Security UsernameToken
 
 ```xml
 <soapenv:Header>
@@ -299,9 +320,10 @@ toxic_soap/
 ├── src/main/java/com/toxicsoap/
 │   ├── ToxicSoapApplication.java         # Entry point
 │   ├── config/
-│   │   └── CxfConfig.java                # SOAP endpoint registration
+│   │   ├── CxfConfig.java                # SOAP endpoint registration
+│   │   └── AuthProperties.java           # Auth configuration binding
 │   ├── interceptor/
-│   │   └── AuthInterceptor.java          # WS-Security + Basic Auth
+│   │   └── AuthInterceptor.java          # 4 auth methods handler
 │   ├── model/
 │   │   ├── Product.java
 │   │   ├── User.java
@@ -309,9 +331,10 @@ toxic_soap/
 │   │   └── AuthContext.java
 │   ├── service/
 │   │   ├── BankingPortalService.java     # Unified service interface
-│   │   └── BankingPortalServiceImpl.java # All vulnerable operations
+│   │   ├── BankingPortalServiceImpl.java # All vulnerable operations
+│   │   └── JwtService.java               # JWT token generation/validation
 │   └── web/
-│       └── AdminPanelController.java     # Web admin panel
+│       └── AdminPanelController.java     # Web admin panel + token endpoint
 ├── src/main/resources/
 │   ├── application.yml                   # Configuration
 │   ├── data.sql                          # Sample data
@@ -328,7 +351,8 @@ toxic_soap/
 - **Java 17** - LTS version
 - **Spring Boot 3.2** - Application framework
 - **Apache CXF 4.0** - SOAP/WSDL framework
-- **H2 Database** - In-memory database
+- **MariaDB** - Database
+- **JJWT** - JWT token handling
 - **Thymeleaf** - Admin panel templating
 - **Docker** - Containerization
 
@@ -346,12 +370,14 @@ make docker-stop  # Stop containers
 
 ## Database
 
-### H2 Console Access
+The application uses MariaDB. When running with Docker Compose, the database is automatically configured.
 
-- URL: http://localhost:4040/h2-console
-- JDBC URL: `jdbc:h2:mem:toxicdb`
-- Username: `sa`
-- Password: (empty)
+### Connection Details (Docker)
+
+- Host: `mariadb` (internal) / `localhost:3306` (external)
+- Database: `toxicdb`
+- Username: `toxic`
+- Password: `toxic123`
 
 ### Reset Database
 

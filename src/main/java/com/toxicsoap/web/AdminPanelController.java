@@ -1,22 +1,32 @@
 package com.toxicsoap.web;
 
+import com.toxicsoap.config.AuthProperties;
+import com.toxicsoap.service.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Controller
 public class AdminPanelController {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private JwtService jwtService;
+
+    @Autowired
+    private AuthProperties authProperties;
 
     @GetMapping("/")
     public String index() {
@@ -79,6 +89,37 @@ public class AdminPanelController {
             status.put("database", "DOWN");
         }
         return status;
+    }
+
+    @PostMapping("/admin/generate-token")
+    @ResponseBody
+    public Map<String, Object> generateToken(@RequestParam String username) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            // Find user in configuration
+            Optional<AuthProperties.UserConfig> userOpt = authProperties.getUsers().stream()
+                .filter(u -> u.getUsername().equals(username))
+                .findFirst();
+
+            if (userOpt.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "User not found: " + username);
+                return response;
+            }
+
+            AuthProperties.UserConfig user = userOpt.get();
+            String token = jwtService.generateToken(user.getUsername(), user.getRole());
+
+            response.put("success", true);
+            response.put("token", token);
+            response.put("username", user.getUsername());
+            response.put("role", user.getRole());
+            response.put("expiresIn", authProperties.getJwt().getExpirationMs() / 1000 + " seconds");
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Token generation failed: " + e.getMessage());
+        }
+        return response;
     }
 
     private void initializeDatabase() {

@@ -46,3 +46,17 @@ toxic-soap:
       - username: guest
         password: guest
         role: GUEST
+    jwt:
+      secret: ${JWT_SECRET:toxic-soap-jwt-secret-key-change-in-production-min-32-chars}
+      expiration-ms: 86400000  # 24 hours
+      issuer: toxic-soap
+    api-keys:
+      - key: user-api-key-12345
+        username: user
+        role: USER
+      - key: admin-api-key-67890
+        username: admin
+        role: ADMIN
+      - key: guest-api-key-abcde
+        username: guest
+        role: GUEST

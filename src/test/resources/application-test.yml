@@ -1,0 +1,43 @@
+server:
+  port: 0  # Random port for tests
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  sql:
+    init:
+      mode: always
+
+toxic-soap:
+  auth:
+    users:
+      - username: user
+        password: user123
+        role: USER
+      - username: admin
+        password: admin123
+        role: ADMIN
+      - username: guest
+        password: guest
+        role: GUEST
+    jwt:
+      secret: test-jwt-secret-key-minimum-32-characters-long-for-testing
+      expiration-ms: 86400000  # 24 hours
+      issuer: toxic-soap-test
+    api-keys:
+      - key: user-api-key-12345
+        username: user
+        role: USER
+      - key: admin-api-key-67890
+        username: admin
+        role: ADMIN
+      - key: guest-api-key-abcde
+        username: guest
+        role: GUEST
+
+logging:
+  level:
+    com.toxicsoap: DEBUG

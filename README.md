@@ -1,4 +1,4 @@
-# Toxic SOAP - BankingPortalService
+# Toxic SOAP - Vulnerable Web Service
 
 A deliberately vulnerable SOAP web service designed for security scanner testing and penetration testing training. Similar to DVWA or WebGoat, but focused specifically on SOAP/XML web services.
 
@@ -394,7 +394,6 @@ It is designed for:
 - Security scanner testing and validation
 - Penetration testing training
 - Security research and education
-- CTF challenges
 
 **DO NOT:**
 - Deploy in production environments
